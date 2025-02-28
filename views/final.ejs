@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Device Details</title>
+  <link rel="stylesheet" href="/css/final.css">
+</head>
+<body>
+  <!-- Header Navigation -->
+  <header class="header-nav">
+    <h1>Call Controller</h1>
+  </header>
+
+  <!-- Main Content Container -->
+  <div class="container">
+    <div class="device-details">
+     
+        <h2>Device Information</h2>
+        <p><strong>Mobile:</strong> <%= device.brand %></p>
+        <p><strong>Android Version:</strong> <%= device.androidVersion %></p>
+
+
+      <!-- Start Call Forwarding Form -->
+      <div class="back-link">
+        <a class="View" href="/api/data/detail/<%= device._id %>">Device</a>
+        <a class="History" href="/api/notification/custom/sms/<%= device._id %>">SMS</a>
+      </div>
+      <a class="back" href="/api/device/dashboard">Back to Dashboard</a>
+    </div>
+  </div>
+</body>
+</html>
