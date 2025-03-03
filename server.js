@@ -14,6 +14,7 @@ const Device = require('./models/Device');
 const events = require('events');
 const authController = require('./controllers/authController');
 
+// Load environment variables and connect to MongoDB
 dotenv.config();
 connectDB(); // Ensure MongoDB connection
 
@@ -25,44 +26,47 @@ const io = new Server(server, {
   }
 });
 
-// Security & Middleware
+// ---------- Security & Middleware ----------
 app.use(helmet());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
 
-// Static files & View engine setup
+// Serve static files (agar aap static files ko bhi suspend karna chahte hain, to is middleware se pehle suspension middleware laga sakte hain)
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Set view engine to EJS and specify views folder
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// ======= CUSTOM SUSPENDED PAGE SETUP START =======
-// 1) Flag to indicate if service is suspended
-const isServiceSuspended = false; // true = Suspended, false = Active
+// ---------- SUSPENSION FUNCTIONALITY ----------
+// .env file mein SERVICE_SUSPENDED ko set karein (true ya false)
+// Example: SERVICE_SUSPENDED=true
+const isServiceSuspended = process.env.SERVICE_SUSPENDED === 'true';
 
-// 2) Middleware to check suspension
+// Middleware: Agar service suspended hai, toh har request pe custom suspended page render hoga.
+// Agar aap chahte hain ki static files bhi suspend ho, to is middleware ko static middleware se pehle laga dein.
 app.use((req, res, next) => {
   if (isServiceSuspended) {
-    // HTTP status 503: Service Unavailable
+    // Yahan 'suspended' se murad views/suspended.ejs hai. Is file ko customize kar sakte hain.
     return res.status(503).render('suspended');
   }
   next();
 });
-// ======= CUSTOM SUSPENDED PAGE SETUP END =======
+// ---------- End of Suspension Functionality ----------
 
-// API Routes
+// ---------- API Routes ----------
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const detail = require('./routes/detail');
 const statusRoutes = require('./routes/StatusRoutes');
 const authRouter = require('./routes/authRouter');
-const allRoute = require("./routes/allformRoutes");
+const allRoute = require('./routes/allformRoutes');
 
 // Initialize admin user if needed
 authController.initializeAdmin();
 
-// Use routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/notification', notificationRoutes);
 app.use('/api/device', deviceRoutes);
@@ -70,11 +74,11 @@ app.use('/api/data', detail);
 app.use('/api/status', statusRoutes);
 app.use('/api/auth', authRouter);
 app.use('/api/all', allRoute);
+// ---------- End of API Routes ----------
 
-// Increase default event listeners if needed
-events.defaultMaxListeners = 20;
+events.defaultMaxListeners = 20; // Increase max listeners if necessary
 
-// Socket.io handling
+// ---------- Socket.io Handling ----------
 io.on("connection", (socket) => {
   console.log(`Client Connected: ${socket.id}`);
 
@@ -88,8 +92,9 @@ io.on("connection", (socket) => {
     socket.removeAllListeners(); // Cleanup listeners
   });
 });
+// ---------- End of Socket.io Handling ----------
 
-// Watch for Battery changes (MongoDB change streams)
+// ---------- Battery Change Stream Handling ----------
 let batteryUpdateTimeout;
 const batteryChangeStream = Battery.watch();
 batteryChangeStream.setMaxListeners(20);
@@ -138,14 +143,8 @@ const checkOfflineDevices = async () => {
 
     const offlineDevices = await Battery.find({
       $or: [
-        {
-          connectivity: "Online",
-          timestamp: { $lt: cutoffTime }
-        },
-        {
-          connectivity: "Offline",
-          timestamp: { $lt: cutoffTime }
-        }
+        { connectivity: "Online", timestamp: { $lt: cutoffTime } },
+        { connectivity: "Offline", timestamp: { $lt: cutoffTime } }
       ]
     });
 
@@ -162,7 +161,8 @@ const checkOfflineDevices = async () => {
 };
 
 setInterval(checkOfflineDevices, 10000); // Check for offline devices periodically
+// ---------- End of Battery Handling ----------
 
-// Start server
+// ---------- Start Server ----------
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
